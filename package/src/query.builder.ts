@@ -1,3 +1,15 @@
+import {
+    PreparedStatementsBuilder,
+    AllowedClause,
+} from './preparedStatements/preparedStatements.builder';
+export enum Clause {
+    where = 'WHERE',
+    offset = 'OFFSET',
+    limit = 'LIMIT',
+    from = 'FROM',
+    select = 'SELECT',
+    orderBy = 'ORDER BY',
+}
 enum OrderMappings {
     asc = 'ASC',
     desc = 'DESC',
@@ -12,7 +24,7 @@ interface FieldAscendingMapping {
 }
 export interface QueryWithPreparedStates {
     query: string;
-    preparedStates: Array<SQLProperty>;
+    preparedStatements: Array<SQLProperty>;
 }
 type SQLProperty = string | number;
 
@@ -21,6 +33,7 @@ export class QueryBuilder {
     private selectQuery: string[] = [];
     private fromAndJoinQuery?: string;
     private whereEqualMappings: Array<FieldValueMapping> = [];
+    private _offset?: number;
     private _limit?: number;
     private orderQuery: FieldAscendingMapping[] = [];
     private endQuery: string[] = [];
@@ -108,6 +121,11 @@ export class QueryBuilder {
         return this.order(field, isAsc);
     }
 
+    offset(n: number): this {
+        this._offset = n;
+        return this;
+    }
+
     limit(n: number): this {
         this._limit = n;
         return this;
@@ -127,21 +145,36 @@ export class QueryBuilder {
             base,
             select,
             fromAndJoin,
-            where,
             order,
-            limit,
             endQuery,
-            preparedStates,
+            preparedStatements,
         } = this.preBuild();
+        const queries: Array<string | undefined> = [
+            base,
+            select,
+            fromAndJoin,
+            this.createWhereString(preparedStatements.startCountOf()),
+            order,
+            this.createOffsetString(
+                preparedStatements.startCountOf([AllowedClause.where]),
+            ),
+            this.createLimitString(
+                preparedStatements.startCountOf([
+                    AllowedClause.where,
+                    AllowedClause.offset,
+                ]),
+            ),
+            ...endQuery,
+        ];
         return {
             query:
-                [base, select, fromAndJoin, where, order, limit, ...endQuery]
+                queries
                     .filter(
                         (item): item is Exclude<typeof item, undefined> =>
                             item !== undefined,
                     )
                     .join(' ') + ';',
-            preparedStates,
+            preparedStatements: preparedStatements.build(),
         };
     }
 
@@ -152,26 +185,26 @@ export class QueryBuilder {
         const {
             base,
             fromAndJoin,
-            where,
             endQuery,
-            preparedStates,
+            preparedStatements,
         } = this.preBuild();
+        const queries: Array<string | undefined> = [
+            base,
+            QueryBuilder.countSelectString,
+            fromAndJoin,
+            this.createWhereString(preparedStatements.startCountOf()),
+            QueryBuilder.oneLimitString,
+            ...endQuery,
+        ];
         return {
             query:
-                [
-                    base,
-                    QueryBuilder.countSelectString,
-                    fromAndJoin,
-                    where,
-                    QueryBuilder.oneLimitString,
-                    ...endQuery,
-                ]
+                queries
                     .filter(
                         (item): item is Exclude<typeof item, undefined> =>
                             item !== undefined,
                     )
                     .join(' ') + ';',
-            preparedStates,
+            preparedStatements: preparedStatements.build([AllowedClause.where]),
         };
     }
 
@@ -179,33 +212,29 @@ export class QueryBuilder {
         base?: string;
         select?: string;
         fromAndJoin?: string;
-        where?: string;
         order?: string;
-        limit?: string;
         endQuery: string[];
-        preparedStates: SQLProperty[];
+        preparedStatements: PreparedStatementsBuilder;
     } {
-        const preparedStates: SQLProperty[] = [];
+        const preparedStatements = new PreparedStatementsBuilder();
         const base = this.baseQuery;
         const select = this.createSelectString();
         const fromAndJoin = this.createFromString();
-        const preWhere = this.createWhereString(preparedStates.length);
-        const where = preWhere?.query;
-        if (preWhere?.preparedStates !== undefined)
-            preparedStates.push(...preWhere.preparedStates);
+        preparedStatements.addWhere(
+            ...this.whereEqualMappings.map(v => v.value),
+        );
         const order = this.createOrderString();
-        const limit = this.createLimitString();
+        if (this._offset) preparedStatements.setOffset(this._offset);
+        if (this._limit) preparedStatements.setLimit(this._limit);
         const endQuery = this.endQuery;
 
         return {
             base,
             select,
             fromAndJoin,
-            where,
             order,
-            limit,
             endQuery,
-            preparedStates,
+            preparedStatements,
         };
     }
 
@@ -214,19 +243,21 @@ export class QueryBuilder {
         return QueryBuilder.createSelectString(this.selectQuery.join(', '));
     };
 
-    private static get countSelectString(): string {
-        return QueryBuilder.createSelectString('count(*) OVER() as found');
-    }
-
-    private static get oneLimitString(): string {
-        return QueryBuilder.createLimitString(1);
-    }
-
-    private createLimitString(): string | undefined {
+    private createLimitString = (
+        initialPreparedCount = 0,
+    ): string | undefined => {
         const limit = this._limit;
         if (!limit) return;
-        return QueryBuilder.createLimitString(limit);
-    }
+        return QueryBuilder.createLimitString(`$${initialPreparedCount}`);
+    };
+
+    private createOffsetString = (
+        initialPreparedCount = 0,
+    ): string | undefined => {
+        const offset = this._offset;
+        if (!offset) return;
+        return QueryBuilder.createOffsetString(`$${initialPreparedCount}`);
+    };
 
     private createFromString(): string | undefined {
         const from = this.fromAndJoinQuery;
@@ -238,47 +269,45 @@ export class QueryBuilder {
         if (this.orderQuery.length < 1) return;
         return QueryBuilder.createOrderString(
             this.orderQuery
-                .map((mapping) =>
+                .map(mapping =>
                     [
                         mapping.field,
                         QueryBuilder.createOrderDirString(mapping.isAscending),
                     ].join(' '),
                 )
-                .join(' '),
+                .join(', '),
         );
     }
 
-    private createWhereString = (
-        initialPreparedCount = 0,
-    ): QueryWithPreparedStates | undefined => {
-        if (Object.values(this.whereEqualMappings).length < 1) return;
-        const property = this.createWhereProperties(initialPreparedCount);
-        return {
-            query: `WHERE ${property.propertiesString}`,
-            preparedStates: property.preparedStates,
-        };
-    };
+    private createWhereString(initialPreparedCount = 0): string | undefined {
+        if (this.whereEqualMappings.length < 1) return;
+        return QueryBuilder.createWhereString(
+            this.whereEqualMappings
+                .map((v, i) => `${v.field} = $${initialPreparedCount + i}`)
+                .join(' AND '),
+        );
+    }
 
-    private createWhereProperties = (initialPreparedCount = 0) => ({
-        propertiesString: this.whereEqualMappings
-            .map((v, i) => `${v.field} = $${initialPreparedCount + i + 1}`)
-            .join(' AND '),
-        preparedStates: this.whereEqualMappings.map((v) => v.value),
-    });
+    private static get countSelectString(): string {
+        return QueryBuilder.createSelectString('count(*) OVER() as found');
+    }
 
-    private static createLimitString(n: number): string {
-        return ['LIMIT', n].join(' ');
+    private static get oneLimitString(): string {
+        return QueryBuilder.createLimitString(1);
     }
-    private static createFromString(str: string): string {
-        return ['FROM', str].join(' ');
-    }
-    private static createSelectString(str: string): string {
-        return ['SELECT', str].join(' ');
-    }
-    private static createOrderString(str: string): string {
-        return ['ORDER', 'BY', str].join(' ');
-    }
-    private static createOrderDirString(isAsc: boolean): string {
-        return isAsc ? OrderMappings.asc : OrderMappings.desc;
-    }
+
+    private static createOffsetString = (n: number | string): string =>
+        [Clause.offset, n].join(' ');
+    private static createWhereString = (str: string): string =>
+        [Clause.where, str].join(' ');
+    private static createLimitString = (n: number | string): string =>
+        [Clause.limit, n].join(' ');
+    private static createFromString = (str: string): string =>
+        [Clause.from, str].join(' ');
+    private static createSelectString = (str: string): string =>
+        [Clause.select, str].join(' ');
+    private static createOrderString = (str: string): string =>
+        [Clause.orderBy, str].join(' ');
+    private static createOrderDirString = (isAsc: boolean): string =>
+        isAsc ? OrderMappings.asc : OrderMappings.desc;
 }
