@@ -1,4 +1,4 @@
-name: npm
+name: publish
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
       - name: Run tests
         run: |
           docker-compose build
-          docker-compose run /bin/bash -c "yarn && yarn test"
+          docker-compose run package /bin/bash -c "yarn && yarn test"
 
   push:
     needs: test
@@ -36,4 +36,6 @@ jobs:
       - name: Push package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: docker-compose run package /bin/bash -c "yarn && yarn publish"
+        run: |
+          docker-compose build
+          docker-compose run package /bin/bash -c "yarn && yarn publish"
