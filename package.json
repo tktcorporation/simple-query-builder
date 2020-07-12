@@ -2,7 +2,7 @@
   "name": "simple-query-builder",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "repository": {
     "url": "https://github.com/tktcorporation/simple-query-builder",
     "type": "git"
