@@ -36,4 +36,4 @@ jobs:
       - name: Push package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: docker-compose run /bin/bash -c "yarn && yarn publish"
+        run: docker-compose run package /bin/bash -c "yarn && yarn publish"
