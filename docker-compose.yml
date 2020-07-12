@@ -5,4 +5,4 @@ services:
     container_name: package
     working_dir: /package
     volumes:
-      - ./package:/package
+      - .:/package

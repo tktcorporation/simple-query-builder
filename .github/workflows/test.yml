@@ -1,0 +1,21 @@
+name: Test
+
+on: pull_request
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build containers
+        run: docker-compose build
+
+      - name: Up a db container
+        run: docker-compose up -d
+
+      - name: Test
+        run: docker-compose run --rm package /bin/bash -c "yarn && yarn test"
