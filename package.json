@@ -2,14 +2,29 @@
   "name": "simple-query-builder",
   "version": "0.0.1",
   "description": "",
-  "author": "tktcorporation",
+  "main": "index.js",
+  "repository": {
+    "url": "https://github.com/tktcorporation/simple-query-builder",
+    "type": "git"
+  },
+  "keywords": [
+    "query",
+    "sql",
+    "simple",
+    "builder"
+  ],
+  "author": "tktcorporation <tktcorporation.go@gmail.com>",
+  "license": "MIT",
   "private": true,
   "engines": {
     "npm": "use yarn instead of npm."
   },
-  "license": "MIT",
+  "homepage": "https://github.com/tktcorporation/simple-query-builder",
+  "bugs": "https://github.com/tktcorporation/simple-query-builder/issues",
+  "files": [
+    "dist/index.js"
+  ],
   "scripts": {
-    "prebuild": "rimraf dist",
     "build": "tsc",
     "prepublishOnly": "yarn build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -37,7 +52,8 @@
     "ts-jest": "25.2.1",
     "ts-loader": "^6.2.1",
     "ts-node": "^8.10.1",
-    "tsconfig-paths": "^3.9.0"
+    "tsconfig-paths": "^3.9.0",
+    "typescript": "^3.9.6"
   },
   "jest": {
     "moduleFileExtensions": [
