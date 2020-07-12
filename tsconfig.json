@@ -10,7 +10,7 @@
     "strictNullChecks": true,
     "target": "es2019",
     "sourceMap": true,
-    "outDir": "./dist",
+    "outDir": "dist",
     "baseUrl": "./",
     "incremental": true
   },
