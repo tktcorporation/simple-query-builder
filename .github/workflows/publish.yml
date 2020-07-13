@@ -6,10 +6,6 @@ on:
     branches:
       - master
 
-    # Publish `v1.2.3` tags as releases.
-    tags:
-      - v*
-
 jobs:
   # Run tests.
   # See also https://docs.docker.com/docker-hub/builds/automated-testing/
@@ -32,14 +28,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      # - name: Push package
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     docker-compose build
-      #     docker-compose run package /bin/bash -c "echo -e \"//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n@tktcorporation:registry=https://npm.pkg.github.com\nalways-auth=true\" > .npmrc && yarn && yarn publish --non-interactive"
-
-      # Setup .npmrc file to publish to GitHub Packages
       - uses: actions/setup-node@v1
         with:
           node-version: "14.x"

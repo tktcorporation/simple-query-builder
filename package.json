@@ -1,8 +1,11 @@
 {
   "name": "type-query-builder",
-  "version": "0.0.2-0",
+  "version": "0.0.3-0",
   "description": "",
   "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "repository": {
     "url": "https://github.com/tktcorporation/simple-query-builder",
     "type": "git"
@@ -20,9 +23,6 @@
   },
   "homepage": "https://github.com/tktcorporation/simple-query-builder",
   "bugs": "https://github.com/tktcorporation/simple-query-builder/issues",
-  "files": [
-    "dist/index.js"
-  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "yarn build",
