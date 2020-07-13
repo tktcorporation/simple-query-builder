@@ -38,4 +38,4 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           docker-compose build
-          docker-compose run package /bin/bash -c "yarn && yarn publish"
+          docker-compose run package /bin/bash -c "echo -e \"//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n@tktcorporation:registry=https://npm.pkg.github.com\nalways-auth=true\" > .npmrc && yarn && yarn publish --non-interactive"
