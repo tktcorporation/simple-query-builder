@@ -1,5 +1,5 @@
 {
-  "name": "simple-query-builder",
+  "name": "type-query-builder",
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
