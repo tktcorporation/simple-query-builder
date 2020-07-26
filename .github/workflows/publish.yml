@@ -2,9 +2,7 @@ name: publish
 
 on:
   push:
-    # Publish `master` as Docker `latest` image.
-    branches:
-      - master
+    tags: ["v*"]
 
 jobs:
   # Run tests.
@@ -36,3 +34,26 @@ jobs:
       - run: yarn publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  release:
+    needs: push
+    runs-on: ubuntu-latest
+    env:
+      APP_PATH: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: |
+            Release note here
+          draft: true
+          prerelease: false
